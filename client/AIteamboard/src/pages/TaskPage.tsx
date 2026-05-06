@@ -16,8 +16,7 @@ export const TasksPage = () => {
     updateTaskStatus,
     doSearch,
     users,
-    setUsers,
-  } = useTasks();
+    setUsers,} = useTasks();
   const { user, loading: authLoading } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
