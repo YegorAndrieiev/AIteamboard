@@ -1,10 +1,10 @@
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 import {
   getTasks,
   createTask,
   deleteTask,
   updateTaskStatus,
-} from "../services/task.service";
+} from '../services/task.service';
 type Params = {
   id: string;
 };
@@ -29,7 +29,10 @@ export const createTaskController = async (req: Request, res: Response) => {
   }
 };
 //DELETE /tasks/id
-export const deleteTaskController = async (req: Request<Params>, res: Response) => {
+export const deleteTaskController = async (
+  req: Request<Params>,
+  res: Response,
+) => {
   try {
     const userId = (req as any).user.userId;
     const { id } = req.params;
@@ -42,7 +45,7 @@ export const deleteTaskController = async (req: Request<Params>, res: Response) 
 //PATCH /tasks/id
 export const updateTaskStatusController = async (
   req: Request<Params>,
-  res: Response
+  res: Response,
 ) => {
   try {
     const userId = (req as any).user.userId;

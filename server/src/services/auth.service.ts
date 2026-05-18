@@ -1,11 +1,19 @@
-import bcrypt from "bcrypt";
-import { findUserByEmail, findUserByUsername, createUser, createVerificationCode,
-  findVerifyCodeByEmail, deleteVerifyCodeByEmail, updateUserPassword, createSession, findSessionByToken
-} from "../repositories/auth.repository.js";
-import jwt from "jsonwebtoken";
-import crypto from "crypto";
-import nodemailer from "nodemailer";
-import { env } from "../config/env.js";
+import bcrypt from 'bcrypt';
+import {
+  findUserByEmail,
+  findUserByUsername,
+  createUser,
+  createVerificationCode,
+  findVerifyCodeByEmail,
+  deleteVerifyCodeByEmail,
+  updateUserPassword,
+  createSession,
+  findSessionByToken,
+} from '../repositories/auth.repository.js';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+import { env } from '../config/env.js';
 const usernameRegex = /^[A-Za-z0-9_]{8,30}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,46 +26,42 @@ type RegisterInput = {
 type LoginInput = {
   input: string;
   password: string;
-}
+};
 type ResetInput = {
   email: string;
   password: string;
   verificationCode: string;
 };
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: 'smtp.gmail.com',
   port: 587,
   secure: false,
-  requireTLS: true, 
+  requireTLS: true,
   auth: {
     user: env.EMAIL_USER,
-    pass: env.EMAIL_PASS
-  }
-
+    pass: env.EMAIL_PASS,
+  },
 });
-const sendEmail = async(email: string, code: string) => {
+const sendEmail = async (email: string, code: string) => {
   try {
     await transporter.sendMail({
       from: `"AI Teamboard" <${env.EMAIL_USER}>`,
       to: email,
-      subject: "Verification Code",
-      text: `Your verification code is ${code}`
+      subject: 'Verification Code',
+      text: `Your verification code is ${code}`,
     });
   } catch (error) {
-    console.error("SMTP Error:", error);
-    throw new Error("Failed to send verification email");
+    throw new Error('Failed to send verification email', { cause: error });
   }
 };
-export const sendCode = async(email: string, reset: boolean) =>
-{
+export const sendCode = async (email: string, reset: boolean) => {
   if (!emailRegex.test(email)) {
-    throw new Error("Invalid email format");
+    throw new Error('Invalid email format');
   }
-  if (reset)
-  {
+  if (reset) {
     const user = await findUserByEmail(email);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
   }
   const code = crypto.randomInt(100000, 999999).toString();
@@ -65,116 +69,117 @@ export const sendCode = async(email: string, reset: boolean) =>
   await createVerificationCode({
     email,
     code,
-    expiresAt
+    expiresAt,
   });
   await sendEmail(email, code);
 };
 export const register = async (data: RegisterInput) => {
-
   const { username, email, password, verificationCode } = data;
 
   if (!username || !email || !password || !verificationCode) {
-    throw new Error("All fields are required");
+    throw new Error('All fields are required');
   }
 
   if (!usernameRegex.test(username)) {
-    throw new Error("Invalid username format");
+    throw new Error('Invalid username format');
   }
 
   if (!emailRegex.test(email)) {
-    throw new Error("Invalid email format");
+    throw new Error('Invalid email format');
   }
   const record = await findVerifyCodeByEmail(email);
-  if (!record || record.code !== verificationCode || record.expiresAt < new Date())
-  {
+  if (
+    !record ||
+    record.code !== verificationCode ||
+    record.expiresAt < new Date()
+  ) {
     await deleteVerifyCodeByEmail(email);
-    throw new Error("Invalid or expired code");
+    throw new Error('Invalid or expired code');
   }
   const [existingEmailUser, existingUsernameUser] = await Promise.all([
     findUserByEmail(email),
-    findUserByUsername(username)
+    findUserByUsername(username),
   ]);
   if (existingEmailUser && existingUsernameUser) {
-    throw new Error("Email and username already in use");
-  }
-  else if (existingEmailUser) {
-    throw new Error("Email already in use");
-  }
-  else if (existingUsernameUser) {
-    throw new Error("Username already in use");
+    throw new Error('Email and username already in use');
+  } else if (existingEmailUser) {
+    throw new Error('Email already in use');
+  } else if (existingUsernameUser) {
+    throw new Error('Username already in use');
   }
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const [user,_] = await Promise.all([
-    createUser({username,email,password: hashedPassword}),
-    deleteVerifyCodeByEmail(email)
-  ])
+  const [user, _] = await Promise.all([
+    createUser({ username, email, password: hashedPassword }),
+    deleteVerifyCodeByEmail(email),
+  ]);
   return user;
 };
 export const login = async (data: LoginInput) => {
   const { input, password } = data;
-  if (!input || !password)
-  {
-    throw new Error("All fields are required");
+  if (!input || !password) {
+    throw new Error('All fields are required');
   }
   let user;
-  if (input.includes('@'))
-  {
+  if (input.includes('@')) {
     user = await findUserByEmail(input);
-  } else{
+  } else {
     user = await findUserByUsername(input);
   }
   if (!user) {
-    throw new Error("Invalid credentials");
+    throw new Error('Invalid credentials');
   }
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
-    throw new Error("Invalid credentials");
+    throw new Error('Invalid credentials');
   }
   const accessToken = jwt.sign(
     { userId: user.id, role: user.role },
     env.JWT_SECRET,
-    { expiresIn: "15m" }
+    { expiresIn: '15m' },
   );
-  const refreshToken = jwt.sign(
-    { userId: user.id },
-    env.JWT_REFRESH_SECRET,
-    { expiresIn: "7d" }
-  );
+  const refreshToken = jwt.sign({ userId: user.id }, env.JWT_REFRESH_SECRET, {
+    expiresIn: '7d',
+  });
   await createSession(
     user.id,
     refreshToken,
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  );
   return { accessToken, refreshToken };
 };
 export const reset = async (data: ResetInput) => {
   const { email, password, verificationCode } = data;
 
   if (!email || !password || !verificationCode) {
-    throw new Error("All fields are required");
+    throw new Error('All fields are required');
   }
 
   if (!emailRegex.test(email)) {
-    throw new Error("Invalid email format");
+    throw new Error('Invalid email format');
   }
 
   const record = await findVerifyCodeByEmail(email);
 
-  if (!record || record.code !== verificationCode || record.expiresAt < new Date()) {
+  if (
+    !record ||
+    record.code !== verificationCode ||
+    record.expiresAt < new Date()
+  ) {
     await deleteVerifyCodeByEmail(email);
-    throw new Error("Invalid or expired code");
+    throw new Error('Invalid or expired code');
   }
 
   const user = await findUserByEmail(email);
 
   if (!user) {
-    throw new Error("User not found");
+    throw new Error('User not found');
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
   await Promise.all([
     updateUserPassword(email, hashedPassword),
-    deleteVerifyCodeByEmail(email)
+    deleteVerifyCodeByEmail(email),
   ]);
 };
 export const refreshToken = async (token: string) => {
@@ -182,14 +187,14 @@ export const refreshToken = async (token: string) => {
   try {
     decoded = jwt.verify(token, env.JWT_REFRESH_SECRET);
   } catch {
-    throw new Error("Invalid refresh token");
+    throw new Error('Invalid refresh token');
   }
   const session = await findSessionByToken(token);
   if (!session) {
-    throw new Error("Session not found");
+    throw new Error('Session not found');
   }
   if (session.expiresAt < new Date()) {
-    throw new Error("Session expired");
+    throw new Error('Session expired');
   }
   const newAccessToken = jwt.sign(
     {
@@ -197,7 +202,7 @@ export const refreshToken = async (token: string) => {
       role: session.user.role,
     },
     env.JWT_SECRET,
-    { expiresIn: "15m" }
+    { expiresIn: '15m' },
   );
   return newAccessToken;
 };

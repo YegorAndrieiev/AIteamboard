@@ -1,10 +1,10 @@
-import { prisma } from "../config/prisma";
+import { prisma } from '../config/prisma';
 export const searchUsers = async (query: string) => {
   return prisma.user.findMany({
     where: {
       username: {
         startsWith: query,
-        mode: "insensitive",
+        mode: 'insensitive',
       },
     },
     select: {
