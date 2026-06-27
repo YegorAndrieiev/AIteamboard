@@ -29,6 +29,7 @@ Since this is a dedicated testing platform rather than a finished commercial pro
 *   **Backend:** Node.js, Express
 *   **Containerization:** Docker, Docker Compose
 *   **Authentication:** Google OAuth 2.0 / JWT
+*   **Databases & Caching:** PostgreSQL (with Prisma ORM), Redis
 
 ---
 
@@ -40,16 +41,27 @@ This project is fully containerized, allowing you to clone it and run it instant
 Make sure you have [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed on your machine.
 
 ### 2. Environment Setup
-1. Clone the repository.
-2. In the root directory, look for the `.env.example` file.
-3. Create a new file named `.env` and copy the contents from `.env.example`.
-4. Fill in your local credentials. 
+To run the application locally, you need to set up three configuration scopes. Review the provided `.env.example` files in each directory:
 
-*Note: The AI API key slot is left empty by default. If you want to test the experimental AI features, simply paste your own AI service API token into the corresponding variable inside the `.env` file.*
+1.  **Root Setup:** Create a `.env` file in the project root directory and set your `POSTGRES_PASSWORD`.
+2.  **Client Setup:** Create a `.env` file inside the `/client` directory and ensure `VITE_API_URL` points to your backend gateway.
+3.  **Server Setup:** Create a `.env` file inside the `/server` directory. Ensure the database password matches your root password inside the `DATABASE_URL` connection string.
+
+#### 🔧 Integration Credentials Note:
+To fully explore all third-party integrations built into this platform, you will need to supply your own credentials inside the `/server/.env` file:
+*   **Google Authentication:** Provide your own `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the Google Cloud Console.
+*   **Email Notifications:** Set up your SMTP server details via `EMAIL_USER` and `EMAIL_PASS` (e.g., Google App Passwords).
+*   **AI Feature Suite:** Paste your active service token into `GEMINI_API_KEY` to enable live experimental AI responses.
+
+#### ⚠️ Crucial Auth Note:
+Because this platform implements secure verification flows, **you cannot complete a new user registration out of the box** without configuring at least one auth provider:
+*   **For Standard Sign-Up:** Requires a working SMTP configuration (`EMAIL_USER` & `EMAIL_PASS`) to deliver the registration verification code.
+*   **For Social Sign-Up:** Requires valid Google Client credentials.
+
+*Note: The local infrastructure (PostgreSQL database, Prisma ORM, Redis caching, and the UI layouts) will still boot up and connect perfectly using mockup environment values, but live third-party credentials are mandatory to bypass the registration walls.*
 
 ### 3. Run with Docker
-Launch the entire stack (Frontend, Backend, and Services) with a single command:
+Launch the entire stack (Frontend, Backend, Database, and Cache) with a single command:
 
 ```bash
 docker compose up --build
-```
